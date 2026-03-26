@@ -3,32 +3,38 @@ pipeline {
 
     stages {
         stage('Checkout') {
+            steps { checkout scm }
+        }
+
+        stage('Build Docker Image') {
             steps {
-                checkout scm
+                sh 'docker build -t ci-app .'
             }
         }
 
-        stage('Build') {
+        stage('Push to DockerHub') {
             steps {
-                sh '''
-                echo "===== BUILD STARTED ====="
-                date
-                ls -l
-                cat index.html
-                echo "===== BUILD COMPLETED ====="
-                '''
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS'
+                )]) {
+                    sh '''
+                    docker tag ci-app $USER/ci-app:latest
+                    echo $PASS | docker login -u $USER --password-stdin
+                    docker push $USER/ci-app:latest
+                    echo "===== DOCKER PUSH COMPLETED ====="
+                    '''
+                }
             }
         }
 
-        stage('Docker Build') {
+        stage('Deploy via Ansible') {
             steps {
                 sh '''
-                echo "===== DOCKER BUILD STARTED ====="
-                docker build -t ci-app:latest .
-                docker images
-                echo "===== DOCKER BUILD COMPLETED ====="
+                cd ansible
+                ansible-playbook -i inventory playbook.yml
                 '''
             }
         }
     }
-}
