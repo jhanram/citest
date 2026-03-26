@@ -1,0 +1,7 @@
+- name: Deploy to Kubernetes
+  hosts: k8s
+  tasks:
+
+    - name: Apply Kubernetes deployment
+      shell: |
+        kubectl apply -f k8s-deployment.yaml
